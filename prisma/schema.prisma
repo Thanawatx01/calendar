@@ -1,0 +1,54 @@
+// Prisma schema for Supabase (PostgreSQL)
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// auth.users is managed by Supabase Auth - we reference user_id as String only
+model Task {
+  id            String    @id @default(uuid())
+  userId        String?   @map("user_id") // references auth.users(id)
+  type          String    // 'event' | 'todo'
+  title         String
+  description   String?
+  startDatetime DateTime? @map("start_datetime")
+  endDatetime   DateTime? @map("end_datetime")
+  dueDatetime   DateTime? @map("due_datetime")
+  isAllDay      Boolean   @default(false) @map("is_all_day")
+  status        String    @default("pending") // pending, in_progress, success
+  priority      Int?      // 1-3
+  color         String?   @db.VarChar(20)
+  parentId      String?   @map("parent_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  parent     Task?       @relation("TaskHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children   Task[]      @relation("TaskHierarchy")
+  timeTracks TimeTrack[]
+
+  @@index([userId])
+  @@index([startDatetime])
+  @@index([dueDatetime])
+  @@index([status])
+}
+
+model TimeTrack {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id") // references auth.users(id)
+  taskId         String   @map("task_id")
+  startTime      DateTime @map("start_time")
+  endTime        DateTime? @map("end_time")
+  durationSeconds Int?    @map("duration_seconds")
+  note           String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+}
