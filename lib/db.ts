@@ -10,11 +10,18 @@ function createPrisma(): PrismaClient {
       "DATABASE_URL is not set. Add it to .env (see .env.example)."
     );
   }
-  // Supabase (and most cloud Postgres) require SSL; ensure it's set
+  // Supabase: use SSL; for pooler (Vercel/serverless) add pgbouncer=true
   try {
     const parsed = new URL(url);
-    if (parsed.hostname.endsWith(".supabase.co") && !parsed.searchParams.has("sslmode")) {
-      parsed.searchParams.set("sslmode", "require");
+    const isSupabase = parsed.hostname.endsWith(".supabase.co");
+    const isPooler =
+      parsed.hostname.includes("pooler.supabase.com") ||
+      parsed.port === "6543";
+    if (isSupabase) {
+      if (!parsed.searchParams.has("sslmode"))
+        parsed.searchParams.set("sslmode", "require");
+      if (isPooler && !parsed.searchParams.has("pgbouncer"))
+        parsed.searchParams.set("pgbouncer", "true");
       url = parsed.toString();
     }
   } catch {
