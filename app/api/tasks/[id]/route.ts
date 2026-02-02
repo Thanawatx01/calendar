@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getPrisma } from "@/lib/db";
+import {
+  getTaskById,
+  getTaskWithTimeTracksCount,
+  updateTask,
+  deleteTask,
+} from "@/lib/supabase-db";
 import { CURRENT_USER_ID } from "@/lib/auth-placeholder";
 
 export async function GET(
@@ -7,12 +12,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const prisma = getPrisma();
     const { id } = await params;
-    const task = await prisma.task.findFirst({
-      where: { id, userId: CURRENT_USER_ID },
-      include: { timeTracks: { orderBy: { startTime: "desc" } } },
-    });
+    const task = await getTaskById(id, CURRENT_USER_ID);
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
@@ -29,15 +30,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const prisma = getPrisma();
     const { id } = await params;
-    const task = await prisma.task.findFirst({
-      where: { id, userId: CURRENT_USER_ID },
-      include: { _count: { select: { timeTracks: true } } },
-    });
-    if (!task) {
+    const result = await getTaskWithTimeTracksCount(id, CURRENT_USER_ID);
+    if (!result) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
+    const { timeTracksCount } = result;
 
     let body: Record<string, unknown>;
     try {
@@ -60,7 +58,7 @@ export async function PATCH(
 
     if (
       dueDatetimeStr !== undefined &&
-      task._count.timeTracks > 0
+      timeTracksCount > 0
     ) {
       return NextResponse.json(
         { error: "ไม่สามารถเปลี่ยนวันครบกำหนด (due) ได้เมื่อมีรายการจับเวลาแล้ว" },
@@ -74,18 +72,22 @@ export async function PATCH(
         ? status
         : undefined;
 
-    const updated = await prisma.task.update({
-      where: { id },
-      data: {
-        ...(typeof title === "string" && title.trim() && { title: title.trim() }),
-        ...(description !== undefined && { description: description === "" ? null : String(description) }),
-        ...(newStatus && { status: newStatus }),
-        ...(priority !== undefined && { priority: priority === "" ? null : Number(priority) }),
-        ...(color !== undefined && { color: color === "" ? null : String(color) }),
-        ...(dueDatetimeStr !== undefined && {
-          dueDatetime: dueDatetimeStr === "" ? null : new Date(dueDatetimeStr as string),
-        }),
-      },
+    const updated = await updateTask(id, CURRENT_USER_ID, {
+      ...(typeof title === "string" && title.trim() && { title: title.trim() }),
+      ...(description !== undefined && {
+        description: description === "" ? null : String(description),
+      }),
+      ...(newStatus && { status: newStatus }),
+      ...(priority !== undefined && {
+        priority: priority === "" ? null : Number(priority),
+      }),
+      ...(color !== undefined && { color: color === "" ? null : String(color) }),
+      ...(dueDatetimeStr !== undefined && {
+        dueDatetime:
+          dueDatetimeStr === ""
+            ? null
+            : (dueDatetimeStr as string),
+      }),
     });
     return NextResponse.json(updated);
   } catch (e) {
@@ -100,15 +102,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const prisma = getPrisma();
     const { id } = await params;
-    const task = await prisma.task.findFirst({
-      where: { id, userId: CURRENT_USER_ID },
-    });
+    const task = await getTaskById(id, CURRENT_USER_ID);
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
-    await prisma.task.delete({ where: { id } });
+    await deleteTask(id, CURRENT_USER_ID);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e);

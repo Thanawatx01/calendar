@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",
@@ -20,6 +20,7 @@
     "@fullcalendar/react": "^6.1.20",
     "@fullcalendar/timegrid": "^6.1.20",
     "@prisma/adapter-pg": "^7.3.0",
+    "@supabase/supabase-js": "^2.93.3",
     "next": "16.1.6",
     "pg": "^8.18.0",
     "react": "19.2.3",

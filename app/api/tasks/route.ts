@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
-import { getPrisma } from "@/lib/db";
+import { getTasks, createTask } from "@/lib/supabase-db";
 import { CURRENT_USER_ID } from "@/lib/auth-placeholder";
 
 export async function GET() {
   try {
-    const prisma = getPrisma();
-    const tasks = await prisma.task.findMany({
-      where: { userId: CURRENT_USER_ID },
-      orderBy: { createdAt: "desc" },
-      include: {
-        timeTracks: { orderBy: { startTime: "desc" } },
-      },
-    });
+    const tasks = await getTasks(CURRENT_USER_ID);
     return NextResponse.json(tasks);
   } catch (e) {
     console.error(e);
@@ -22,7 +15,6 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const prisma = getPrisma();
     let body: {
       type?: string;
       title?: string;
@@ -76,20 +68,18 @@ export async function POST(request: Request) {
         ? status
         : "pending";
 
-    const task = await prisma.task.create({
-      data: {
-        userId: CURRENT_USER_ID,
-        type,
-        title,
-        description: description ?? null,
-        startDatetime: startDatetime ? new Date(startDatetime) : null,
-        endDatetime: endDatetime ? new Date(endDatetime) : null,
-        dueDatetime: dueDatetime ? new Date(dueDatetime) : null,
-        isAllDay: isAllDay ?? false,
-        status: taskStatus,
-        priority: priority ?? null,
-        color: color ?? null,
-      },
+    const task = await createTask({
+      userId: CURRENT_USER_ID,
+      type,
+      title,
+      description: description ?? null,
+      startDatetime: startDatetime ?? null,
+      endDatetime: endDatetime ?? null,
+      dueDatetime: dueDatetime ?? null,
+      isAllDay: isAllDay ?? false,
+      status: taskStatus,
+      priority: priority ?? null,
+      color: color ?? null,
     });
 
     return NextResponse.json(task);
