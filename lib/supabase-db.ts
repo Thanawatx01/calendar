@@ -124,13 +124,9 @@ export async function getTaskById(
   id: string,
   userId: string | null
 ): Promise<Task | null> {
-  let q = supabase
-    .from("Task")
-    .select("*")
-    .eq("id", id)
-    .single();
+  let q = supabase.from("Task").select("*").eq("id", id);
   if (userId != null) q = q.eq("user_id", userId);
-  const { data, error } = await q;
+  const { data, error } = await q.single();
   if (error || !data) return null;
   const task = taskRowToApp(data as TaskRow);
   const { data: tt } = await supabase
@@ -201,9 +197,9 @@ export async function updateTask(
     if (!t) throw new Error("Task not found");
     return t;
   }
-  let q = supabase.from("Task").update(row).eq("id", id).select().single();
+  let q = supabase.from("Task").update(row).eq("id", id);
   if (userId != null) q = q.eq("user_id", userId);
-  const { data: updated, error } = await q;
+  const { data: updated, error } = await q.select().single();
   if (error) throw error;
   return taskRowToApp(updated as TaskRow);
 }
